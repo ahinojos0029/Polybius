@@ -9,7 +9,7 @@ from pathlib import Path
 import pygame
 
 # --- PLATFORM-SPECIFIC CONFIG & DATA DIRECTORIES ---
-APP_NAME = "PolybiusII"
+APP_NAME = "POLYBIUS II"
 
 
 def get_app_dir() -> Path:
