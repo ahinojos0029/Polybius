@@ -75,6 +75,9 @@ class GameState:
         self.gun_heat = 0.0
         self.overheated = False
 
+        self.player_name_chars = ["A", "A", "A"]
+        self.name_cursor_idx = 0
+
     @property
     def active_leaderboard(self):
         return (
