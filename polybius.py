@@ -722,7 +722,7 @@ while running:
     if not overdrive_unlocked:
       draw_text(
           canvas,
-          "TYPE SECRET PASSWORD FOR OVERDRIVE",
+          "TYPE SECRET PASSWORD FOR MORE SETTINGS",
           WIDTH // 2,
           360,
           CYAN,
