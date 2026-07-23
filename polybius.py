@@ -725,9 +725,9 @@ while running:
     camping_penalty = 1.4 if is_static else 1.0
 
     if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-      player_velocity -= 0.010 * dt
-    elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
       player_velocity += 0.010 * dt
+    elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+      player_velocity -= 0.010 * dt
     else:
       player_velocity *= 0.80**dt
 
