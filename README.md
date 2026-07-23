@@ -44,4 +44,5 @@ A spiritual successor and modern reimagining of the classic 1981 urban legend ar
 ## Credits & License
 
 Developed as a tribute to arcade lore and vector graphics history.
+
 © 2026 Armando Hinojosa. All rights reserved.
