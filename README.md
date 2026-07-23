@@ -25,16 +25,17 @@ A spiritual successor and modern reimagining of the classic 1981 urban legend ar
 ## Installation & Requirements
 
 1. Make sure you have Python installed along with the `pygame` library:
+
    ```bash
    pip install pygame
+   ```
 
-```
 
 2. Run the game script:
-```bash
-python polybius.py
 
-```
+   ```bash
+   python polybius.py
+   ```
 
 
 
