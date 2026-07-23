@@ -44,38 +44,35 @@ jobs:
           python -m pip install --upgrade pip
           pip install pygame pypresence pillow nuitka zstandard
 
-      # Windows Build (Nuitka auto-fetches MinGW compiler)
+      # Windows Build
       - name: Build Executable (Windows)
         if: runner.os == 'Windows'
         run: |
           python -m nuitka `
             --standalone `
-            --plugin-enable=pygame `
             --windows-console-mode=disable `
             --windows-icon-from-ico=icon.ico `
             --assume-yes-for-downloads `
             --output-dir=dist `
             polybius.py
 
-      # Linux Build (Nuitka)
+      # Linux Build
       - name: Build Executable (Linux)
         if: runner.os == 'Linux'
         run: |
           python -m nuitka \
             --standalone \
-            --plugin-enable=pygame \
             --linux-icon=icon.ico \
             --assume-yes-for-downloads \
             --output-dir=dist \
             polybius.py
 
-      # macOS Build (Nuitka App Bundle)
+      # macOS Build
       - name: Build Executable (macOS)
         if: runner.os == 'macOS'
         run: |
           python -m nuitka \
             --standalone \
-            --plugin-enable=pygame \
             --macos-create-app-bundle \
             --macos-app-icon=icon.ico \
             --assume-yes-for-downloads \
