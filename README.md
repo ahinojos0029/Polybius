@@ -9,7 +9,6 @@ A spiritual successor and modern reimagining of the classic 1981 urban legend ar
 * **Classic Vector Tunnel Graphics:** Layered, rotating polygon tunnels that dynamically scale in speed and complexity based on your stage progression and stress level.
 * **Dynamic Stress System:** Multiplier mechanics that intensify visual feedback, screen jitter, audio frequency, and tunnel velocity the longer you survive.
 * **Invasive Subliminal Messaging:** Psychological horror triggers that flash and jitter with increasing frequency and duration as your stress level mounts.
-* **Online Multiplayer Lobby:** Local socket-based matchmaking allowing two players to connect and ready up for cooperative or competitive runs.
 * **Authentic 8-Bit Audio:** Procedurally generated square waves, laser chirps, noise explosions, and stage-clear jingles synthesized on the fly using raw audio buffers.
 * **Campaign & Arcade Modes:** Multiple stages with escalating difficulty, secret overdrive modifiers, and a persistent global high score leaderboard.
 
