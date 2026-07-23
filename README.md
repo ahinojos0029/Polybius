@@ -1,4 +1,4 @@
-# Polybius II
+# POLYBIUS II
 
 A spiritual successor and modern reimagining of the classic 1981 urban legend arcade game, built with Python and Pygame. Featuring intense vector-style tunnel rendering, dynamic stress-scaling mechanics, custom sound generation, and local multiplayer capabilities.
 

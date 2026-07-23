@@ -242,7 +242,7 @@ def render_frame(canvas, g, ui, settings):
             ui.draw_text(canvas, "GAME PAUSED", WIDTH // 2, 50, AMBER, "xl", center=True)
             pause_opts = [
                 ("RESUME GAME", ""),
-                ("MASTER VOLUME", f"{int(settings['master_volume'] * 100)}%"),
+                ("STRESS VOLUME", f"{int(settings['master_volume'] * 100)}%"),
                 ("INVERT X", "ON" if settings["invert_x"] else "OFF"),
                 ("INVERT Y", "ON" if settings["invert_y"] else "OFF"),
                 ("COLORBLIND MODE", "ON" if settings.get("colorblind_mode", False) else "OFF"),
