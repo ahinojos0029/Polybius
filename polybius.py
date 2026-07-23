@@ -276,10 +276,12 @@ STATE_PLAYING = 4
 STATE_TRANSITION = 5
 STATE_GAMEOVER = 6
 STATE_ENTER_NAME = 7
+STATE_PAUSED = 9
 current_state = STATE_WARNING
 
 menu_selection = 0
 options_selection = 0
+pause_selection = 0
 campaign_level_selected = 1
 options_overdrive = False
 secret_typed_buffer = ""
@@ -416,6 +418,8 @@ while running:
       update_discord_status(
           f"Stage {level} | Score: {score:06d}", f"Stress: {multiplier}X"
       )
+    elif current_state == STATE_PAUSED:
+      update_discord_status(f"Stage {level} | PAUSED", f"Score: {score:06d}")
     elif current_state == STATE_GAMEOVER:
       update_discord_status("Mission Terminated", f"Final Score: {score:06d}")
 
@@ -424,8 +428,12 @@ while running:
       running = False
     elif event.type == pygame.KEYDOWN:
       if event.key == pygame.K_ESCAPE:
-        if current_state in (
-            STATE_PLAYING,
+        if current_state == STATE_PLAYING:
+          current_state = STATE_PAUSED
+          pause_selection = 0
+        elif current_state == STATE_PAUSED:
+          current_state = STATE_PLAYING
+        elif current_state in (
             STATE_CAMPAIGN_MENU,
             STATE_OPTIONS,
             STATE_LEADERBOARD,
@@ -434,6 +442,43 @@ while running:
           menu_selection = 0
         else:
           running = False
+
+      elif current_state == STATE_PAUSED:
+        pause_options_count = 5 if overdrive_unlocked else 4
+        if event.key == pygame.K_UP:
+          pause_selection = (pause_selection - 1) % pause_options_count
+        elif event.key == pygame.K_DOWN:
+          pause_selection = (pause_selection + 1) % pause_options_count
+        elif event.key in (
+            pygame.K_LEFT,
+            pygame.K_RIGHT,
+            pygame.K_RETURN,
+            pygame.K_SPACE,
+        ):
+          if pause_selection == 0:
+            current_state = STATE_PLAYING
+          elif pause_selection == 1:
+            if event.key == pygame.K_LEFT:
+              settings["master_volume"] = max(
+                  0.0, round(settings["master_volume"] - 0.1, 1)
+              )
+            else:
+              settings["master_volume"] = min(
+                  1.0, round(settings["master_volume"] + 0.1, 1)
+              )
+            save_settings()
+          elif pause_selection == 2:
+            settings["invert_x"] = not settings["invert_x"]
+            save_settings()
+          elif pause_selection == 3:
+            settings["invert_y"] = not settings["invert_y"]
+            save_settings()
+          elif pause_selection == 4 and overdrive_unlocked:
+            options_overdrive = not options_overdrive
+            save_settings()
+        elif event.key == pygame.K_q:
+          current_state = STATE_MAIN_MENU
+          menu_selection = 0
 
       elif current_state == STATE_WARNING:
         if event.key in (pygame.K_RETURN, pygame.K_SPACE):
@@ -550,10 +595,11 @@ while running:
           current_state = STATE_MAIN_MENU
           menu_selection = 0
 
-  if shoot_cooldown > 0:
-    shoot_cooldown -= max(1, round(dt))
-  if rapid_fire_timer > 0:
-    rapid_fire_timer -= max(1, round(dt))
+  if current_state == STATE_PLAYING:
+    if shoot_cooldown > 0:
+      shoot_cooldown -= max(1, round(dt))
+    if rapid_fire_timer > 0:
+      rapid_fire_timer -= max(1, round(dt))
 
   canvas = pygame.Surface((WIDTH, HEIGHT))
 
@@ -809,61 +855,64 @@ while running:
     if transition_timer <= 0:
       current_state = STATE_PLAYING
 
-  elif current_state == STATE_PLAYING:
-    beat_interval = max(6, 30 - (multiplier * 3))
-    if frame_count % beat_interval == 0 and not CHAN_HUM.get_busy():
-      stress_freq = 55 + (multiplier * 12)
-      dynamic_hum = gen_square_wave(
-          stress_freq, 0.15 + (0.02 * multiplier), 0.08
-      )
-      CHAN_HUM.play(dynamic_hum)
+  elif current_state in (STATE_PLAYING, STATE_PAUSED):
+    if current_state == STATE_PLAYING:
+      beat_interval = max(6, 30 - (multiplier * 3))
+      if frame_count % beat_interval == 0 and not CHAN_HUM.get_busy():
+        stress_freq = 55 + (multiplier * 12)
+        dynamic_hum = gen_square_wave(
+            stress_freq, 0.15 + (0.02 * multiplier), 0.08
+        )
+        CHAN_HUM.play(dynamic_hum)
 
-    keys = pygame.key.get_pressed()
+      keys = pygame.key.get_pressed()
 
-    x_dir = 0
-    if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-      x_dir += 1
-    if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-      x_dir -= 1
+      x_dir = 0
+      if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+        x_dir += 1
+      if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+        x_dir -= 1
 
-    y_dir = 0
-    if keys[pygame.K_UP] or keys[pygame.K_w]:
-      y_dir -= 1
-    if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-      y_dir += 1
+      y_dir = 0
+      if keys[pygame.K_UP] or keys[pygame.K_w]:
+        y_dir -= 1
+      if keys[pygame.K_DOWN] or keys[pygame.K_s]:
+        y_dir += 1
 
-    if settings["invert_x"]:
-      x_dir *= -1
-    if settings["invert_y"]:
-      y_dir *= -1
+      if settings["invert_x"]:
+        x_dir *= -1
+      if settings["invert_y"]:
+        y_dir *= -1
 
-    is_static = x_dir == 0 and y_dir == 0
-    camping_penalty = 1.4 if is_static else 1.0
+      is_static = x_dir == 0 and y_dir == 0
+      camping_penalty = 1.4 if is_static else 1.0
 
-    if x_dir != 0:
-      player_velocity += (x_dir * 0.010) * dt
-    else:
-      player_velocity *= 0.80**dt
+      if x_dir != 0:
+        player_velocity += (x_dir * 0.010) * dt
+      else:
+        player_velocity *= 0.80**dt
 
-    player_velocity = max(-0.12, min(0.12, player_velocity))
-    player_angle += player_velocity * dt
+      player_velocity = max(-0.12, min(0.12, player_velocity))
+      player_angle += player_velocity * dt
 
-    if y_dir != 0:
-      player_dist_velocity += (y_dir * 0.350) * dt
-    else:
-      player_dist_velocity *= 0.85**dt
+      if y_dir != 0:
+        player_dist_velocity += (y_dir * 0.350) * dt
+      else:
+        player_dist_velocity *= 0.85**dt
 
-    player_dist_velocity = max(-2.50, min(2.50, player_dist_velocity))
-    player_distance += player_dist_velocity * dt
-    player_distance = max(100, min(280, player_distance))
+      player_dist_velocity = max(-2.50, min(2.50, player_dist_velocity))
+      player_distance += player_dist_velocity * dt
+      player_distance = max(100, min(280, player_distance))
 
-    if invincible_timer > 0:
-      invincible_timer -= dt
-    spawn_rate = max(4, (36 - (multiplier * 2) - (level * 2)))
-    if frame_count % spawn_rate == 0:
-      spawn_obstacle()
+      if invincible_timer > 0:
+        invincible_timer -= dt
+      spawn_rate = max(4, (36 - (multiplier * 2) - (level * 2)))
+      if frame_count % spawn_rate == 0:
+        spawn_obstacle()
 
-    canvas.fill((40, 0, 40) if strobe_flash else BLACK)
+    canvas.fill(
+        (40, 0, 40) if (strobe_flash and current_state == STATE_PLAYING) else BLACK
+    )
     strobe_flash = False
 
     active_palette = LEVEL_PALETTES[(level - 1) % len(LEVEL_PALETTES)]
@@ -920,7 +969,8 @@ while running:
         pygame.draw.circle(canvas, color, (cx, cy), int(radius), width=2)
 
     for b in bullets[:]:
-      b["dist"] -= 12 * dt
+      if current_state == STATE_PLAYING:
+        b["dist"] -= 12 * dt
       bx, by = (
           cx + math.cos(b["angle"]) * b["dist"],
           cy + math.sin(b["angle"]) * b["dist"],
@@ -930,11 +980,12 @@ while running:
           cy + math.sin(b["angle"]) * (b["dist"] + 14),
       )
       pygame.draw.line(canvas, WHITE, (bx, by), (bx_end, by_end), 2)
-      if b["dist"] <= 0:
+      if b["dist"] <= 0 and current_state == STATE_PLAYING:
         bullets.remove(b)
 
     for p in powerups[:]:
-      p["dist"] += p["speed"] * dt
+      if current_state == STATE_PLAYING:
+        p["dist"] += p["speed"] * dt
       px_p = cx + math.cos(p["angle"]) * p["dist"]
       py_p = cy + math.sin(p["angle"]) * p["dist"]
       if p["type"] == "F":
@@ -949,25 +1000,27 @@ while running:
         draw_text(
             canvas, p["type"], int(px_p - 6), int(py_p - 6), p_color, FONT_MD
         )
-      angle_diff_p = (
-          player_angle - p["angle"] + math.pi
-      ) % (2 * math.pi) - math.pi
-      if abs(p["dist"] - player_distance) < 20 and abs(angle_diff_p) < 0.35:
-        if p["type"] == "F":
-          lives = 9
-        elif p["type"] == "S":
-          shotgun_active = True
-        elif p["type"] == "H":
-          lives += 1
-        elif p["type"] == "R":
-          rapid_fire_timer = 300
-        CHAN_SFX.play(SND_POWERUP)
-        powerups.remove(p)
-      elif p["dist"] > 400:
-        powerups.remove(p)
+      if current_state == STATE_PLAYING:
+        angle_diff_p = (
+            player_angle - p["angle"] + math.pi
+        ) % (2 * math.pi) - math.pi
+        if abs(p["dist"] - player_distance) < 20 and abs(angle_diff_p) < 0.35:
+          if p["type"] == "F":
+            lives = 9
+          elif p["type"] == "S":
+            shotgun_active = True
+          elif p["type"] == "H":
+            lives += 1
+          elif p["type"] == "R":
+            rapid_fire_timer = 300
+          CHAN_SFX.play(SND_POWERUP)
+          powerups.remove(p)
+        elif p["dist"] > 400:
+          powerups.remove(p)
 
     for obs in obstacles[:]:
-      obs["dist"] += obs["speed"] * dt * camping_penalty
+      if current_state == STATE_PLAYING:
+        obs["dist"] += obs["speed"] * dt * camping_penalty
       ox, oy = (
           cx + math.cos(obs["angle"]) * obs["dist"],
           cy + math.sin(obs["angle"]) * obs["dist"],
@@ -981,60 +1034,61 @@ while running:
         poly_pts.append((ox + math.cos(a) * size, oy + math.sin(a) * size))
       pygame.draw.polygon(canvas, obs_color, poly_pts, width=2)
 
-    for obs in obstacles[:]:
-      for b in bullets[:]:
-        angle_diff = (
-            b["angle"] - obs["angle"] + math.pi
+    if current_state == STATE_PLAYING:
+      for obs in obstacles[:]:
+        for b in bullets[:]:
+          angle_diff = (
+              b["angle"] - obs["angle"] + math.pi
+          ) % (2 * math.pi) - math.pi
+          if abs(b["dist"] - obs["dist"]) < 20 and abs(angle_diff) < 0.35:
+            score += 100 * multiplier * level
+            if score > high_score:
+              high_score = score
+            multiplier_streak += 1
+            level_kills += 1
+            if random.random() < 0.25:
+              spawn_powerup(obs["angle"], obs["dist"])
+            if level_kills >= 15:
+              level += 1
+              level_kills = 0
+              transition_timer = 120
+              shotgun_active = False
+              CHAN_MUSIC.play(SND_STAGE_CLEAR)
+              current_state = STATE_TRANSITION
+            if multiplier_streak % 4 == 0 and multiplier < 8:
+              multiplier += 1
+            if settings["screen_shake_enabled"]:
+              shake_intensity = 7
+            strobe_flash = True
+            CHAN_SFX.play(SND_HIT)
+            if obs in obstacles:
+              obstacles.remove(obs)
+            if b in bullets:
+              bullets.remove(b)
+            break
+
+        angle_diff_player = (
+            player_angle - obs["angle"] + math.pi
         ) % (2 * math.pi) - math.pi
-        if abs(b["dist"] - obs["dist"]) < 20 and abs(angle_diff) < 0.35:
-          score += 100 * multiplier * level
-          if score > high_score:
-            high_score = score
-          multiplier_streak += 1
-          level_kills += 1
-          if random.random() < 0.25:
-            spawn_powerup(obs["angle"], obs["dist"])
-          if level_kills >= 15:
-            level += 1
-            level_kills = 0
-            transition_timer = 120
-            shotgun_active = False
-            CHAN_MUSIC.play(SND_STAGE_CLEAR)
-            current_state = STATE_TRANSITION
-          if multiplier_streak % 4 == 0 and multiplier < 8:
-            multiplier += 1
+        if (
+            abs(obs["dist"] - player_distance) < 20
+            and abs(angle_diff_player) < 0.35
+            and invincible_timer <= 0
+        ):
+          lives -= 1
+          multiplier, multiplier_streak = 1, 0
+          invincible_timer = 60
           if settings["screen_shake_enabled"]:
-            shake_intensity = 7
-          strobe_flash = True
-          CHAN_SFX.play(SND_HIT)
+            shake_intensity = 20
+          CHAN_EXPLODE.play(SND_EXPLODE)
           if obs in obstacles:
             obstacles.remove(obs)
-          if b in bullets:
-            bullets.remove(b)
-          break
+          if lives <= 0:
+            gameover_timer = 150
+            current_state = STATE_GAMEOVER
 
-      angle_diff_player = (
-          player_angle - obs["angle"] + math.pi
-      ) % (2 * math.pi) - math.pi
-      if (
-          abs(obs["dist"] - player_distance) < 20
-          and abs(angle_diff_player) < 0.35
-          and invincible_timer <= 0
-      ):
-        lives -= 1
-        multiplier, multiplier_streak = 1, 0
-        invincible_timer = 60
-        if settings["screen_shake_enabled"]:
-          shake_intensity = 20
-        CHAN_EXPLODE.play(SND_EXPLODE)
-        if obs in obstacles:
+        if obs["dist"] > 400 and obs in obstacles:
           obstacles.remove(obs)
-        if lives <= 0:
-          gameover_timer = 150
-          current_state = STATE_GAMEOVER
-
-      if obs["dist"] > 400 and obs in obstacles:
-        obstacles.remove(obs)
 
     px, py = (
         cx + math.cos(player_angle) * player_distance,
@@ -1050,7 +1104,7 @@ while running:
     subliminal_interval = max(30, 180 - (multiplier * 20))
     subliminal_duration = min(45, 20 + (multiplier * 3))
 
-    if frame_count % subliminal_interval == 0:
+    if frame_count % subliminal_interval == 0 and current_state == STATE_PLAYING:
       subliminal_text = random.choice(SUBLIMINALS)
     if (frame_count % subliminal_interval) < subliminal_duration:
       flash_x = WIDTH // 2 + (
@@ -1077,6 +1131,57 @@ while running:
 
     for i in range(min(lives, 12)):
       pygame.draw.circle(canvas, RED_TEXT, (WIDTH - 30 - (i * 15), 25), 5)
+
+    # RENDER PAUSE MENU OVERLAY
+    if current_state == STATE_PAUSED:
+      overlay = pygame.Surface((WIDTH, HEIGHT))
+      overlay.set_alpha(200)
+      overlay.fill(BLACK)
+      canvas.blit(overlay, (0, 0))
+
+      draw_text(canvas, "GAME PAUSED", WIDTH // 2, 70, AMBER, FONT_XL, center=True)
+
+      opts = [
+          ("RESUME GAME", ""),
+          ("MASTER VOLUME", f"{int(settings['master_volume'] * 100)}%"),
+          ("INVERT X", "ON" if settings["invert_x"] else "OFF"),
+          ("INVERT Y", "ON" if settings["invert_y"] else "OFF"),
+      ]
+      if overdrive_unlocked:
+        opts.append(("OVERDRIVE MODE", "ON" if options_overdrive else "OFF"))
+
+      for idx, (label, val) in enumerate(opts):
+        color = GREEN if idx == pause_selection else WHITE
+        prefix = "> " if idx == pause_selection else "  "
+        text_str = f"{prefix}{label}: {val}" if val else f"{prefix}{label}"
+        draw_text(
+            canvas,
+            text_str,
+            WIDTH // 2,
+            170 + (idx * 40),
+            color,
+            FONT_MD,
+            center=True,
+        )
+
+      draw_text(
+          canvas,
+          "PRESS [Q] TO ABORT RUN & EXIT TO MENU",
+          WIDTH // 2,
+          400,
+          RED_TEXT,
+          FONT_SM,
+          center=True,
+      )
+      draw_text(
+          canvas,
+          "PRESS ESC TO RESUME",
+          WIDTH // 2,
+          425,
+          CYAN,
+          FONT_SM,
+          center=True,
+      )
 
   elif current_state == STATE_GAMEOVER:
     gameover_timer -= dt
@@ -1175,7 +1280,7 @@ while running:
       if (shake_intensity > 0 and settings["screen_shake_enabled"])
       else 0
   )
-  if shake_intensity > 0:
+  if shake_intensity > 0 and current_state == STATE_PLAYING:
     shake_intensity -= dt
 
   if multiplier >= 5:
