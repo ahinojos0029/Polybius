@@ -1,10 +1,40 @@
-import array
 import json
 import math
 import os
 import random
 import sys
+import time
 import pygame
+
+# --- DISCORD RICH PRESENCE SETUP ---
+try:
+  from pypresence import Presence
+
+  CLIENT_ID = (
+      "1529672643945431090"  # Replace with your actual Discord Application ID
+  )
+  RPC = Presence(CLIENT_ID)
+  RPC.connect()
+  rpc_connected = True
+  rpc_start_time = time.time()
+except Exception:
+  rpc_connected = False
+  RPC = None
+
+
+def update_discord_status(details_text, state_text=""):
+  if rpc_connected:
+    try:
+      RPC.update(
+          details=details_text,
+          state=state_text if state_text else None,
+          start=rpc_start_time,
+          large_image="polybius_logo",  # Upload this key in Discord Dev Portal
+          large_text="POLYBIUS II",
+      )
+    except Exception:
+      pass
+
 
 # Audio Initialization
 pygame.mixer.pre_init(frequency=22050, size=-16, channels=1, buffer=256)
@@ -12,7 +42,7 @@ pygame.init()
 pygame.mixer.init()
 
 WIDTH, HEIGHT = 640, 480
-SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
+SCREEN = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN | pygame.SCALED)
 pygame.display.set_caption("POLYBIUS II - (C) 2026 ARMANDO HINOJOSA")
 CLOCK = pygame.time.Clock()
 
@@ -298,6 +328,23 @@ while running:
     dt = 3.0
 
   frame_count += 1
+
+  # Update Discord RPC periodic sync (every 60 frames ~ 1 second)
+  if frame_count % 60 == 0:
+    if current_state in (
+        STATE_WARNING,
+        STATE_MAIN_MENU,
+        STATE_CAMPAIGN_MENU,
+        STATE_OPTIONS,
+        STATE_LEADERBOARD,
+    ):
+      update_discord_status("In Arcade Cabinet", "Main Menu")
+    elif current_state in (STATE_PLAYING, STATE_TRANSITION):
+      update_discord_status(
+          f"Stage {level} | Score: {score:06d}", f"Stress: {multiplier}X"
+      )
+    elif current_state == STATE_GAMEOVER:
+      update_discord_status("Mission Terminated", f"Final Score: {score:06d}")
 
   for event in pygame.event.get():
     if event.type == pygame.QUIT:
@@ -677,9 +724,9 @@ while running:
     camping_penalty = 1.4 if is_static else 1.0
 
     if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-      player_velocity += 0.010 * dt
-    elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
       player_velocity -= 0.010 * dt
+    elif keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+      player_velocity += 0.010 * dt
     else:
       player_velocity *= 0.80**dt
 
